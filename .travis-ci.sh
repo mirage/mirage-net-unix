@@ -1,6 +1,5 @@
 # OPAM packages needed to build tests.
-OPAM_PACKAGES="cstruct ounit lwt mirage-types"
-
+OPAM_PACKAGES="cstruct ounit lwt mirage-types io-page-unix tuntap"
 
 case "$OCAML_VERSION,$OPAM_VERSION" in
 3.12.1,1.0.0) ppa=avsm/ocaml312+opam10 ;;
@@ -26,6 +25,5 @@ opam --git-version
 opam init 
 opam install ${OPAM_PACKAGES}
 
-eval `opam config -env`
+eval `opam config env`
 make
-make test

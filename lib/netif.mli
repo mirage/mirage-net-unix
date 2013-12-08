@@ -14,8 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-include V1.NET.IF
+include V1.NETWORK
 with type 'a io = 'a Lwt.t
-and type     page_aligned_buffer = Cstruct.t
+and type     page_aligned_buffer = Io_page.t
+and type     buffer = Cstruct.t
 and type     id = string
 and type     macaddr = Macaddr.t

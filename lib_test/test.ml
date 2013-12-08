@@ -26,14 +26,21 @@ let test_open () =
   | `Error e -> raise (Failure "didnt connect")
   | `Ok t ->
     printf "connected\n%!";
-    Netif.listen t
-     (fun buf ->
-        printf "got packet\n%!";
-        return ()
-     )
-    >>= function 
-    | `Error e -> raise (Failure "exited listen with error");
-    | `Ok () -> return ()
+    let page = Io_page.get 1 in
+    let rec read n =
+       match n with
+       | 0 -> return ()
+       | n ->
+           Netif.read t page
+           >>= function
+           | `Error _ ->
+             printf "read error\n%!";
+             return ()
+           | `Ok buf ->
+             printf "got packet of len %d\n%!" (Cstruct.len buf);
+             read (n-1)
+    in
+    read 10
   in
   Lwt_main.run thread
 

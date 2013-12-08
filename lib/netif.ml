@@ -76,49 +76,24 @@ let disconnect t =
   return ()
 
 type macaddr = Macaddr.t
-type page_aligned_buffer = Cstruct.t
+type page_aligned_buffer = Io_page.t
+type buffer = Cstruct.t
 
 let macaddr t =
   t.mac
 
 (* Input a frame, and block if nothing is available *)
-let rec input t =
-  let page = Io_page.get 1 in
+let rec read t page =
   lwt len = Lwt_bytes.read t.dev page 0 t.buf_sz in
   match len with
   |(-1) -> (* EAGAIN or EWOULDBLOCK *)
-    input t
+    read t page
   |0 -> (* EOF *)
-    t.active <- false;
-    input t
+    return (`Error `Disconnected)
   |n -> 
     t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts; 
     t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len); 
-    return (Cstruct.sub (Io_page.to_cstruct page) 0 len)
-
-(* Loop and listen for packets permanently *)
-let rec listen t fn =
-  match t.active with
-  |true -> begin
-      try_lwt
-        lwt frame = input t in
-        Lwt.ignore_result (
-          try_lwt 
-            fn frame
-          with exn ->
-            return (printf "EXN: %s bt: %s\n%!" (Printexc.to_string exn) (Printexc.get_backtrace()))
-        );
-        listen t fn
-      with 
-      |  Unix.Unix_error(Unix.ENXIO, _, _) -> 
-        let _ = printf "[netif-input] device %s is down\n%!" t.id in 
-        return (`Error `Disconnected)
-      | exn -> 
-        let _ = eprintf "[netif-input] error : %s\n%!" (Printexc.to_string exn ) in
-        let _ = t.buf <- (Cstruct.create 0) in 
-        listen t fn 
-    end
-  |false -> return (`Ok ())
+    return (`Ok (Cstruct.sub (Io_page.to_cstruct page) 0 len))
 
 (* Transmit a packet from an Io_page *)
 let write t page =
