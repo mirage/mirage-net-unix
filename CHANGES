@@ -1,7 +1,8 @@
 1.0.0 (08-Dec-2013):
 * Use the NETWORK.listen interface from mirage-types-0.5.0.
+* Fix findlib package name to `mirage-net-unix`.
 
-0.9.9 (08-Dec-2013)
+0.9.0 (08-Dec-2013)
 * Adapt to mirage-types-0.4.0
 * Do not pack Netif, making it a toplevel module instead.
 * import first version of Netif driver based on mirage-platform-0.9.8
