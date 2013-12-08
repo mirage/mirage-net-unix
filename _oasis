@@ -7,7 +7,7 @@ License:     ISC
 Plugins:     META (0.3)
 BuildTools:  ocamlbuild
 
-Library "mirage-net"
+Library "mirage-net-unix"
   Pack:               true
   CompiledObject:     best
   Path:               lib
