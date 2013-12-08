@@ -22,25 +22,15 @@ let test_open () =
   let thread =
     Netif.connect "tap0" 
     >>= function
-  | `Error (`Unknown s) -> raise (Failure ("didnt connect: " ^ s))
-  | `Error e -> raise (Failure "didnt connect")
-  | `Ok t ->
-    printf "connected\n%!";
-    let page = Io_page.get 1 in
-    let rec read n =
-       match n with
-       | 0 -> return ()
-       | n ->
-           Netif.read t page
-           >>= function
-           | `Error _ ->
-             printf "read error\n%!";
-             return ()
-           | `Ok buf ->
-             printf "got packet of len %d\n%!" (Cstruct.len buf);
-             read (n-1)
-    in
-    read 10
+    | `Error (`Unknown s) -> raise (Failure ("didnt connect: " ^ s))
+    | `Error e -> raise (Failure "didnt connect")
+    | `Ok t ->
+      printf "connected\n%!";
+      Netif.listen t
+        (fun buf ->
+           printf "got packet of len %d\n%!" (Cstruct.len buf);
+           return ()
+        )
   in
   Lwt_main.run thread
 
@@ -49,9 +39,9 @@ let _ =
   Arg.parse [
     "-verbose", Arg.Unit (fun _ -> verbose := true), "Run in verbose mode";
   ] (fun x -> Printf.fprintf stderr "Ignoring argument: %s" x)
-  "Test unix net driver";
+    "Test unix net driver";
 
   let suite = "net" >::: [
-    "test open" >:: test_open;
-  ] in
+      "test open" >:: test_open;
+    ] in
   run_test_tt ~verbose:!verbose suite

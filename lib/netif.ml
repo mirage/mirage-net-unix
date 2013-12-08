@@ -95,6 +95,36 @@ let rec read t page =
     t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len); 
     return (`Ok (Cstruct.sub (Io_page.to_cstruct page) 0 len))
 
+(* Loop and listen for packets permanently *)
+let rec listen t fn =
+  match t.active with
+  | true -> begin
+      try_lwt
+        let page = Io_page.get 1 in
+        read t page
+        >>= function
+        | `Error _ ->
+          printf "Netif: error, terminating listen loop\n%!";
+          return ()
+        | `Ok buf ->
+          ignore_result (
+            try_lwt 
+              fn buf
+            with exn ->
+              return (printf "EXN: %s bt: %s\n%!" (Printexc.to_string exn) (Printexc.get_backtrace()))
+          );
+          listen t fn
+      with 
+      |  Unix.Unix_error(Unix.ENXIO, _, _) -> 
+        let _ = printf "[netif-input] device %s is down\n%!" t.id in 
+        return ()
+      | exn -> 
+        let _ = eprintf "[netif-input] error : %s\n%!" (Printexc.to_string exn ) in
+        let _ = t.buf <- (Cstruct.create 0) in 
+        listen t fn 
+    end
+  |false -> return ()
+
 (* Transmit a packet from an Io_page *)
 let write t page =
   (* Unfortunately we peek inside the cstruct type here: *)
