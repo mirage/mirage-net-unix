@@ -1,3 +1,4 @@
 0.9.9 (08-Dec-2013)
+* Adapt to mirage-types-0.4.0
 * Do not pack Netif, making it a toplevel module instead.
 * import first version of Netif driver based on mirage-platform-0.9.8
