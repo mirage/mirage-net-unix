@@ -1,3 +1,6 @@
+1.0.1 (trunk):
+* Depend on the unified io-page library instead of io-page-unix.
+
 1.0.0 (08-Dec-2013):
 * Use the NETWORK.listen interface from mirage-types-0.5.0.
 * Fix findlib package name to `mirage-net-unix`.
