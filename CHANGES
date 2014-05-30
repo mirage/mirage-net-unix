@@ -1,4 +1,9 @@
-1.1.0 (01-Feb-2013):
+1.1.1 (30-May-2014):
+* Improve error message for permission denied (#6).
+* Fix the order of linking to ensure `io-page.unix` comes first.
+  This works around a linking hack to ensure the C symbols load.
+
+1.1.0 (01-Feb-2014):
 * Depend on the unified io-page library instead of io-page-unix.
 
 1.0.0 (08-Dec-2013):

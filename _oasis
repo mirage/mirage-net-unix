@@ -1,6 +1,6 @@
 OASISFormat: 0.3
 Name:        mirage-net-unix
-Version:     1.1.0
+Version:     1.1.1
 Synopsis:    Mirage network driver for Unix
 Authors:     Anil Madhavapeddy, David Scott
 License:     ISC
@@ -12,7 +12,7 @@ Library "mirage-net-unix"
   Path:               lib
   Findlibname:        mirage-net-unix
   Modules:            Netif
-  BuildDepends:       cstruct, lwt, lwt.unix, mirage-types, tuntap, io-page, io-page.unix
+  BuildDepends:       cstruct, lwt, lwt.unix, mirage-types, tuntap, io-page.unix, io-page
 
 Executable test
   CompiledObject:     best
@@ -20,4 +20,4 @@ Executable test
   MainIs:             test.ml
   Custom:             true
   Install:            false
-  BuildDepends:       lwt, lwt.unix, mirage-net-unix, cstruct, oUnit, io-page, io-page.unix
+  BuildDepends:       lwt, lwt.unix, mirage-net-unix, cstruct, oUnit, io-page.unix, io-page
