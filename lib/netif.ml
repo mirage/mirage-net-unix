@@ -69,9 +69,7 @@ let connect devname =
     return (`Ok t)
   with
     |Failure "tun[open]: Permission denied" ->
-      let s = sprintf "Permission denied while opening the %s tun device.  
-        Please re-run using sudo, and install the TuntapOSX package if you 
-        are on MacOS X." devname in
+      let s = sprintf "Permission denied while opening the %s tun device.  Please re-run using sudo, and install the TuntapOSX package if you are on MacOS X." devname in
       return (`Error (`Unknown s))
     |exn -> return (`Error (`Unknown (Printexc.to_string exn)))
 
