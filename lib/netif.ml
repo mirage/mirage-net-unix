@@ -68,7 +68,12 @@ let connect devname =
     printf "Netif: connect %s\n%!" devname;
     return (`Ok t)
   with
-    exn -> return (`Error (`Unknown (Printexc.to_string exn)))
+    |Failure "tun[open]: Permission denied" ->
+      let s = sprintf "Permission denied while opening the %s tun device.  
+        Please re-run using sudo, and install the TuntapOSX package if you 
+        are on MacOS X." devname in
+      return (`Error (`Unknown s))
+    |exn -> return (`Error (`Unknown (Printexc.to_string exn)))
 
 let disconnect t =
   printf "Netif: disconnect %s\n%!" t.id;
