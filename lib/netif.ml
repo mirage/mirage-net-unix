@@ -40,7 +40,7 @@ type t = {
   mutable buf: Cstruct.t;
   dev: Lwt_unix.file_descr;
   mutable active: bool;
-  mac: Macaddr.t;
+  mutable mac: Macaddr.t;
   stats : stats;
 }
 
@@ -82,8 +82,8 @@ type macaddr = Macaddr.t
 type page_aligned_buffer = Io_page.t
 type buffer = Cstruct.t
 
-let macaddr t =
-  t.mac
+let macaddr t = t.mac
+let set_macaddr t mac = t.mac <- mac
 
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
