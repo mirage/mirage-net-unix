@@ -1,3 +1,6 @@
+2.0.0 (14-Aug-2014):
+* Make `mac` field mutable and add a `set_mac` function to modify it.
+
 1.1.1 (30-May-2014):
 * Improve error message for permission denied (#6).
 * Fix the order of linking to ensure `io-page.unix` comes first.
