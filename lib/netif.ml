@@ -63,7 +63,7 @@ let connect devname =
       id=devname; dev; active; mac; buf_sz=4096;
       stats= { rx_bytes=0L;rx_pkts=0l;
                tx_bytes=0L; tx_pkts=0l };
-      buf=Io_page.to_cstruct (Lwt_bytes.create 0) } in
+      buf=Io_page.to_cstruct (Io_page.get 1) } in
     Hashtbl.add devices devname t;
     printf "Netif: connect %s\n%!" devname;
     return (`Ok t)
@@ -87,16 +87,17 @@ let set_macaddr t mac = t.mac <- mac
 
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
-  lwt len = Lwt_bytes.read t.dev page 0 t.buf_sz in
-  match len with
+  let buf = Io_page.to_cstruct page in
+  Lwt_cstruct.read t.dev buf
+  >>= function
   |(-1) -> (* EAGAIN or EWOULDBLOCK *)
     read t page
   |0 -> (* EOF *)
     return (`Error `Disconnected)
-  |n -> 
+  |len -> 
     t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts; 
     t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len); 
-    return (`Ok (Cstruct.sub (Io_page.to_cstruct page) 0 len))
+    return (`Ok (Cstruct.sub buf 0 len))
 
 (* Loop and listen for packets permanently *)
 let rec listen t fn =
