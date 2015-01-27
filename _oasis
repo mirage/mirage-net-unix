@@ -1,10 +1,10 @@
-OASISFormat: 0.3
+OASISFormat: 0.4
 Name:        mirage-net-unix
-Version:     2.0.0
+Version:     2.1.0
 Synopsis:    Mirage network driver for Unix
 Authors:     Anil Madhavapeddy, David Scott
 License:     ISC
-Plugins:     META (0.3)
+Plugins:     META (0.4)
 BuildTools:  ocamlbuild
 
 Library "mirage-net-unix"
@@ -12,7 +12,7 @@ Library "mirage-net-unix"
   Path:               lib
   Findlibname:        mirage-net-unix
   Modules:            Netif
-  BuildDepends:       cstruct, lwt, lwt.unix, mirage-types, tuntap, io-page.unix, io-page
+  BuildDepends:       cstruct.lwt, lwt.unix, mirage-types, tuntap, io-page.unix, io-page
 
 Executable test
   CompiledObject:     best

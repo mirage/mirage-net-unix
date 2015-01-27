@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 8b2e8b2635114c2aa50209bd293f275b)
+# DO NOT EDIT (digest: 7adba8fcc5769d2c5df14f6fc4a2c06a)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -15,15 +16,15 @@
 "_darcs": not_hygienic
 # Library mirage-net-unix
 "lib/mirage-net-unix.cmxs": use_mirage-net-unix
-<lib/*.ml{,i}>: pkg_cstruct
-<lib/*.ml{,i}>: pkg_io-page
-<lib/*.ml{,i}>: pkg_io-page.unix
-<lib/*.ml{,i}>: pkg_lwt
-<lib/*.ml{,i}>: pkg_lwt.unix
-<lib/*.ml{,i}>: pkg_mirage-types
-<lib/*.ml{,i}>: pkg_tuntap
+<lib/*.ml{,i,y}>: pkg_cstruct.lwt
+<lib/*.ml{,i,y}>: pkg_io-page
+<lib/*.ml{,i,y}>: pkg_io-page.unix
+<lib/*.ml{,i,y}>: pkg_lwt.unix
+<lib/*.ml{,i,y}>: pkg_mirage-types
+<lib/*.ml{,i,y}>: pkg_tuntap
 # Executable test
 <lib_test/test.{native,byte}>: pkg_cstruct
+<lib_test/test.{native,byte}>: pkg_cstruct.lwt
 <lib_test/test.{native,byte}>: pkg_io-page
 <lib_test/test.{native,byte}>: pkg_io-page.unix
 <lib_test/test.{native,byte}>: pkg_lwt
@@ -32,15 +33,16 @@
 <lib_test/test.{native,byte}>: pkg_oUnit
 <lib_test/test.{native,byte}>: pkg_tuntap
 <lib_test/test.{native,byte}>: use_mirage-net-unix
-<lib_test/*.ml{,i}>: pkg_cstruct
-<lib_test/*.ml{,i}>: pkg_io-page
-<lib_test/*.ml{,i}>: pkg_io-page.unix
-<lib_test/*.ml{,i}>: pkg_lwt
-<lib_test/*.ml{,i}>: pkg_lwt.unix
-<lib_test/*.ml{,i}>: pkg_mirage-types
-<lib_test/*.ml{,i}>: pkg_oUnit
-<lib_test/*.ml{,i}>: pkg_tuntap
-<lib_test/*.ml{,i}>: use_mirage-net-unix
+<lib_test/*.ml{,i,y}>: pkg_cstruct
+<lib_test/*.ml{,i,y}>: pkg_cstruct.lwt
+<lib_test/*.ml{,i,y}>: pkg_io-page
+<lib_test/*.ml{,i,y}>: pkg_io-page.unix
+<lib_test/*.ml{,i,y}>: pkg_lwt
+<lib_test/*.ml{,i,y}>: pkg_lwt.unix
+<lib_test/*.ml{,i,y}>: pkg_mirage-types
+<lib_test/*.ml{,i,y}>: pkg_oUnit
+<lib_test/*.ml{,i,y}>: pkg_tuntap
+<lib_test/*.ml{,i,y}>: use_mirage-net-unix
 <lib_test/test.{native,byte}>: custom
 # OASIS_STOP
 true: debug, annot, bin_annot
