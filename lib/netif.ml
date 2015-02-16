@@ -53,7 +53,7 @@ let devices = Hashtbl.create 1
 
 let connect devname =
   try
-    let fd, devname = Tuntap.opentap ~pi:false ~persist:false ~devname () in
+    let fd, devname = Tuntap.opentap ~pi:false ~devname () in
     let dev = Lwt_unix.of_unix_file_descr ~blocking:false fd in
     let mac = Macaddr.make_local (fun _ -> Random.int 256) in
     Tuntap.set_up_and_running devname;
