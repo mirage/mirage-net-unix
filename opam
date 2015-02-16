@@ -5,7 +5,8 @@ homepage: "https://github.com/mirage/mirage-net-unix"
 bug-reports: "https://github.com/mirage/mirage-net-unix/issues"
 dev-repo: "https://github.com/mirage/mirage-net-unix.git"
 license: "ISC"
-build: [ [make] ]
+build: [make]
+build-test: [make "test"]
 install: [ [make "install"] ]
 remove: [[make "uninstall"]]
 depends: [
@@ -15,6 +16,6 @@ depends: [
   "mirage-types" {>= "1.1.0"}
   "io-page" {>= "1.0.1"}
   "tuntap" {>= "0.7.0"}
-  "ounit"
+  "ounit" {test}
 ]
 available: [ ocaml-version >= "4.00.0"]
