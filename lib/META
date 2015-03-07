@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: 26eb4fcc7d53ccc77e085e96fd19ec93)
-version = "2.1.1"
+# DO NOT EDIT (digest: 71d6d14282257b4a3cfd177202acefd6)
+version = "2.2.0"
 description = "Mirage network driver for Unix"
 requires = "cstruct.lwt lwt.unix mirage-types tuntap io-page.unix io-page"
 archive(byte) = "mirage-net-unix.cma"
