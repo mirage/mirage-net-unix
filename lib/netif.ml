@@ -85,6 +85,12 @@ type buffer = Cstruct.t
 let macaddr t = t.mac
 let set_macaddr t mac = t.mac <- mac
 
+let error_to_string =
+  function
+  | `Unknown message -> sprintf "undiagnosed error - %s" message 
+  | `Unimplemented   -> "operation not yet implemented"
+  | `Disconnected    -> "device is disconnected"
+
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
   let buf = Io_page.to_cstruct page in
@@ -107,8 +113,8 @@ let rec listen t fn =
         let page = Io_page.get 1 in
         read t page
         >>= function
-        | `Error _ ->
-          printf "Netif: error, terminating listen loop\n%!";
+        | `Error e ->
+          printf "Netif: error, %s, terminating listen loop\n%!" (error_to_string e);
           return ()
         | `Ok buf ->
           ignore_result (
