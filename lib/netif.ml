@@ -31,7 +31,7 @@ type stats = {
   mutable rx_bytes : int64;
   mutable rx_pkts : int32;
   mutable tx_bytes : int64;
-  mutable tx_pkts : int32; 
+  mutable tx_pkts : int32;
 }
 
 type t = {
@@ -87,7 +87,7 @@ let set_macaddr t mac = t.mac <- mac
 
 let error_to_string =
   function
-  | `Unknown message -> sprintf "undiagnosed error - %s" message 
+  | `Unknown message -> sprintf "undiagnosed error - %s" message
   | `Unimplemented   -> "operation not yet implemented"
   | `Disconnected    -> "device is disconnected"
 
@@ -100,9 +100,9 @@ let rec read t page =
     read t page
   |0 -> (* EOF *)
     return (`Error `Disconnected)
-  |len -> 
-    t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts; 
-    t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len); 
+  |len ->
+    t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
+    t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
     return (`Ok (Cstruct.sub buf 0 len))
 
 (* Loop and listen for packets permanently *)
@@ -118,20 +118,20 @@ let rec listen t fn =
           return ()
         | `Ok buf ->
           ignore_result (
-            try_lwt 
+            try_lwt
               fn buf
             with exn ->
               return (printf "EXN: %s bt: %s\n%!" (Printexc.to_string exn) (Printexc.get_backtrace()))
           );
           listen t fn
-      with 
-      |  Unix.Unix_error(Unix.ENXIO, _, _) -> 
-        let _ = printf "[netif-input] device %s is down\n%!" t.id in 
+      with
+      |  Unix.Unix_error(Unix.ENXIO, _, _) ->
+        let _ = printf "[netif-input] device %s is down\n%!" t.id in
         return ()
-      | exn -> 
+      | exn ->
         let _ = eprintf "[netif-input] error : %s\n%!" (Printexc.to_string exn ) in
-        let _ = t.buf <- (Cstruct.create 0) in 
-        listen t fn 
+        let _ = t.buf <- (Cstruct.create 0) in
+        listen t fn
     end
   |false -> return ()
 
@@ -139,8 +139,8 @@ let rec listen t fn =
 let write t page =
   (* Unfortunately we peek inside the cstruct type here: *)
   lwt len' = Lwt_bytes.write t.dev page.Cstruct.buffer page.Cstruct.off page.Cstruct.len in
-  t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts; 
-  t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int page.Cstruct.len); 
+  t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
+  t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int page.Cstruct.len);
   if len' <> page.Cstruct.len then
     raise_lwt (Failure (sprintf "tap: partial write (%d, expected %d)" len' page.Cstruct.len))
   else
