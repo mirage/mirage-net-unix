@@ -91,45 +91,49 @@ let error_to_string =
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
   let buf = Io_page.to_cstruct page in
-  Lwt_cstruct.read t.dev buf
-  >>= function
-  |(-1) -> (* EAGAIN or EWOULDBLOCK *)
-    read t page
-  |0 -> (* EOF *)
-    return (`Error `Disconnected)
-  |len ->
-    t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
-    t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
-    return (`Ok (Cstruct.sub buf 0 len))
+  try_lwt
+    (Lwt_cstruct.read t.dev buf
+     >>= function
+     | (-1) -> (* EAGAIN or EWOULDBLOCK *)
+       read t page
+     | 0 -> (* EOF *)
+       return (`Error `Disconnected)
+     | len ->
+       t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
+       t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
+       return (`Ok (Cstruct.sub buf 0 len)))
+  with
+   | Unix.Unix_error(Unix.ENXIO, _, _) ->
+     printf "[netif-input] device %s is down\n%!" t.id;
+     return (`Error `Disconnected)
+   | exn ->
+     printf "[netif-input] error : %s\n%!" (Printexc.to_string exn);
+     return `Continue
 
 (* Loop and listen for packets permanently *)
+(* this function has to be tail recursive, since it is called at the
+   top level, otherwise memory of received packets and all reachable
+   data is never claimed.  take care when modifying, here be dragons! *)
 let rec listen t fn =
   match t.active with
-  | true -> begin
-      try_lwt
-        let page = Io_page.get 1 in
-        read t page
-        >>= function
+  | true ->
+    let page = Io_page.get 1 in
+    read t page >|= (function
         | `Error e ->
-          printf "Netif: error, %s, terminating listen loop\n%!" (error_to_string e);
-          return ()
+          printf "[netif] error, %s, terminating listen loop\n%!" (error_to_string e);
+          t.active <- false
+        | `Continue -> ()
         | `Ok buf ->
-          ignore_result (
-            try_lwt
-              fn buf
-            with exn ->
-              return (printf "EXN: %s bt: %s\n%!" (Printexc.to_string exn) (Printexc.get_backtrace()))
-          );
-          listen t fn
-      with
-      |  Unix.Unix_error(Unix.ENXIO, _, _) ->
-        let _ = printf "[netif-input] device %s is down\n%!" t.id in
-        return ()
-      | exn ->
-        let _ = eprintf "[netif-input] error : %s\n%!" (Printexc.to_string exn ) in
-        listen t fn
-    end
-  |false -> return ()
+          ignore_result
+            (try_lwt
+               fn buf
+             with exn ->
+               printf "[netif] error while handling %s bt: %s\n%!"
+                 (Printexc.to_string exn) (Printexc.get_backtrace ());
+               return_unit))
+    >>= fun () ->
+    listen t fn
+  | false -> return_unit
 
 (* Transmit a packet from an Io_page *)
 let write t page =
