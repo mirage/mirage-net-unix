@@ -36,8 +36,6 @@ type stats = {
 
 type t = {
   id: id;
-  buf_sz: int;
-  mutable buf: Cstruct.t;
   dev: Lwt_unix.file_descr;
   mutable active: bool;
   mutable mac: Macaddr.t;
@@ -60,10 +58,9 @@ let connect devname =
     printf "plugging into %s with mac %s..\n%!" devname (Macaddr.to_string mac);
     let active = true in
     let t = {
-      id=devname; dev; active; mac; buf_sz=4096;
+      id=devname; dev; active; mac;
       stats= { rx_bytes=0L;rx_pkts=0l;
-               tx_bytes=0L; tx_pkts=0l };
-      buf=Io_page.to_cstruct (Io_page.get 1) } in
+               tx_bytes=0L; tx_pkts=0l } } in
     Hashtbl.add devices devname t;
     printf "Netif: connect %s\n%!" devname;
     return (`Ok t)
@@ -130,7 +127,6 @@ let rec listen t fn =
         return ()
       | exn ->
         let _ = eprintf "[netif-input] error : %s\n%!" (Printexc.to_string exn ) in
-        let _ = t.buf <- (Cstruct.create 0) in
         listen t fn
     end
   |false -> return ()
