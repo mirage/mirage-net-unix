@@ -1,3 +1,8 @@
+2.2.1 (02-Jun-2015)
+* Make `Netif.listen` tail-recursive. This fixes a long-standing (small)
+  memory leak (#16, by @hannesm and @samoht)
+* Expose `Netif.pp_error`
+
 2.2.0 (07-Mar-2015)
 * Leave the tuntap persistence flag unchanged (#9, from @infidel)
 * Add explicit `connect` function to interface (#10)
