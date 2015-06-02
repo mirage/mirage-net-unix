@@ -37,7 +37,7 @@ clean:
 	@ocamlbuild -clean
 	@rm -f setup.data setup.log setup.bin
 
-ARCHIVE = https://github.com/mirage/mirage-xen-unix/archive/v$(VERSION).tar.gz
+ARCHIVE = https://github.com/mirage/mirage-net-unix/archive/v$(VERSION).tar.gz
 
 release:
 	git tag -a v$(VERSION) -m "Version $(VERSION)."
