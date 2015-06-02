@@ -1,7 +1,8 @@
 .PHONY: all clean install build
 all: build doc
 
-NAME=mirage-net-unix
+NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
+VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
 J=4
 
 export OCAMLRUNPARAM=b
@@ -36,8 +37,6 @@ clean:
 	@ocamlbuild -clean
 	@rm -f setup.data setup.log setup.bin
 
-NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
-VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
 ARCHIVE = https://github.com/mirage/mirage-xen-unix/archive/v$(VERSION).tar.gz
 
 release:
