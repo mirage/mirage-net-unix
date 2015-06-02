@@ -35,3 +35,16 @@ reinstall: setup.bin
 clean:
 	@ocamlbuild -clean
 	@rm -f setup.data setup.log setup.bin
+
+NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
+VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
+ARCHIVE = https://github.com/mirage/mirage-xen-unix/archive/v$(VERSION).tar.gz
+
+release:
+	git tag -a v$(VERSION) -m "Version $(VERSION)."
+	git push upstream v$(VERSION)
+	$(MAKE) pr
+
+pr:
+	opam publish prepare $(NAME).$(VERSION) $(ARCHIVE)
+	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
