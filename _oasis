@@ -16,8 +16,14 @@ Library "mirage-net-unix"
 
 Executable test
   CompiledObject:     best
+  Build$:             flag(tests)
   Path:               lib_test
   MainIs:             test.ml
   Custom:             true
   Install:            false
   BuildDepends:       lwt, lwt.unix, mirage-net-unix, cstruct, oUnit, io-page.unix, io-page
+
+Test test
+  Run$:             flag(tests)
+  Command:          sudo $test
+  WorkingDirectory: lib_test
