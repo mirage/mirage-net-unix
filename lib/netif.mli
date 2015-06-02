@@ -22,3 +22,4 @@ and type     id = string
 and type     macaddr = Macaddr.t
 
 val connect : string -> [`Ok of t | `Error of error] io
+val pp_error: Format.formatter -> error -> unit
