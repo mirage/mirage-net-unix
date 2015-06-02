@@ -16,7 +16,9 @@
  *)
 
 let log fmt = Format.printf ("Netif: " ^^ fmt ^^ "\n%!")
+
 let (>>=) = Lwt.(>>=)
+let (>|=) = Lwt.(>|=)
 
 type +'a io = 'a Lwt.t
 type id = string
@@ -121,7 +123,15 @@ let rec read t page =
   | `EAGAIN -> read t page
   | `Error _ | `Continue | `Ok _ as r -> Lwt.return r
 
-(* Loop and listen for packets permanently *)
+let safe_apply f x =
+  Lwt.catch
+    (fun () -> f x)
+    (fun exn ->
+       log "[listen] error while handling %s, continuing. bt: %s"
+         (Printexc.to_string exn) (Printexc.get_backtrace ());
+       Lwt.return_unit)
+
+    (* Loop and listen for packets permanently *)
 (* this function has to be tail recursive, since it is called at the
    top level, otherwise memory of received packets and all reachable
    data is never claimed.  take care when modifying, here be dragons! *)
@@ -130,19 +140,12 @@ let rec listen t fn =
   | true ->
     let page = Io_page.get 1 in
     let process () =
-      read t page >>= function
-      | `Error e ->
+      read t page >|= function
+      | `Continue -> ()
+      | `Ok buf   -> Lwt.async (fun () -> safe_apply fn buf)
+      | `Error e  ->
         log "[listen] error, %a, terminating listen loop" pp_error e;
-        t.active <- false;
-        Lwt.return_unit
-      | `Continue -> Lwt.return_unit
-      | `Ok buf ->
-        Lwt.catch
-          (fun () -> fn buf)
-          (fun exn ->
-             log "[listen] error while handling %s, continuing. bt: %s"
-               (Printexc.to_string exn) (Printexc.get_backtrace ());
-             Lwt.return_unit)
+        t.active <- false
     in
     process () >>= fun () ->
     listen t fn
