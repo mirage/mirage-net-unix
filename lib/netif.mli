@@ -1,5 +1,6 @@
 (*
- * Copyright (C) 2013 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (C) 2013-2015 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (C) 2015      Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,11 +15,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
+(** Implementation of the network interface for Unix backends. *)
+
 include V1.NETWORK
-with type 'a io = 'a Lwt.t
-and type     page_aligned_buffer = Io_page.t
-and type     buffer = Cstruct.t
-and type     id = string
-and type     macaddr = Macaddr.t
+  with type 'a io = 'a Lwt.t
+   and type page_aligned_buffer = Io_page.t
+   and type buffer = Cstruct.t
+   and type id = string
+   and type macaddr = Macaddr.t
 
 val connect : string -> [`Ok of t | `Error of error] io
+(** [connect tap] connects to the given tap interface. *)
+
+val pp_error: Format.formatter -> error -> unit
+(** Pretty-print the error. *)

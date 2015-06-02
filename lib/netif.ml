@@ -1,5 +1,6 @@
 (*
- * Copyright (c) 2010-2013 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2010-2015 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (C) 2015      Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,17 +15,18 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-open Lwt
-open Printf
+let log fmt = Format.printf ("Netif: " ^^ fmt ^^ "\n%!")
+
+let (>>=) = Lwt.(>>=)
+let (>|=) = Lwt.(>|=)
 
 type +'a io = 'a Lwt.t
 type id = string
 
-(** IO operation errors *)
 type error = [
-  | `Unknown of string (** an undiagnosed error *)
-  | `Unimplemented     (** operation not yet implemented in the code *)
-  | `Disconnected      (** the device has been previously disconnected *)
+  | `Unknown of string
+  | `Unimplemented
+  | `Disconnected
 ]
 
 type stats = {
@@ -42,12 +44,26 @@ type t = {
   stats : stats;
 }
 
-type vif_info = {
-  vif_id: id;
-  vif_fd: Unix.file_descr;
-}
-
 let devices = Hashtbl.create 1
+
+let err e = Lwt.return (`Error e)
+let fail fmt = Printf.ksprintf (fun str -> Lwt.fail (Failure str)) fmt
+let ok x = Lwt.return (`Ok x)
+
+let err_unknown u = err (`Unknown u)
+let err_disconnected () = err `Disconnected
+
+let err_permission_denied devname =
+  let s = Printf.sprintf
+      "Permission denied while opening the %s tun device. \n\
+       Please re-run using sudo, and install the TuntapOSX \n\
+       package if you are on MacOS X." devname
+  in
+  err_unknown s
+
+let err_partial_write len' page =
+  fail "tap: partial write (%d, expected %d)" len' page.Cstruct.len
+
 
 let connect devname =
   try
@@ -55,62 +71,67 @@ let connect devname =
     let dev = Lwt_unix.of_unix_file_descr ~blocking:false fd in
     let mac = Macaddr.make_local (fun _ -> Random.int 256) in
     Tuntap.set_up_and_running devname;
-    printf "plugging into %s with mac %s..\n%!" devname (Macaddr.to_string mac);
+    log "plugging into %s with mac %s" devname (Macaddr.to_string mac);
     let active = true in
     let t = {
       id=devname; dev; active; mac;
-      stats= { rx_bytes=0L;rx_pkts=0l;
-               tx_bytes=0L; tx_pkts=0l } } in
+      stats= { rx_bytes=0L;rx_pkts=0l; tx_bytes=0L; tx_pkts=0l } }
+    in
     Hashtbl.add devices devname t;
-    printf "Netif: connect %s\n%!" devname;
-    return (`Ok t)
+    log "connect %s" devname;
+    ok t
   with
-    |Failure "tun[open]: Permission denied" ->
-      let s = sprintf "Permission denied while opening the %s tun device.  Please re-run using sudo, and install the TuntapOSX package if you are on MacOS X." devname in
-      return (`Error (`Unknown s))
-    |exn -> return (`Error (`Unknown (Printexc.to_string exn)))
+  | Failure "tun[open]: Permission denied" -> err_permission_denied devname
+  | exn -> err_unknown (Printexc.to_string exn)
 
 let disconnect t =
-  printf "Netif: disconnect %s\n%!" t.id;
+  log "disconnect %s" t.id;
   Tuntap.closetun t.id;
-  return ()
+  Lwt.return_unit
 
 type macaddr = Macaddr.t
 type page_aligned_buffer = Io_page.t
 type buffer = Cstruct.t
 
-let macaddr t = t.mac
-let set_macaddr t mac = t.mac <- mac
-
-let error_to_string =
-  function
-  | `Unknown message -> sprintf "undiagnosed error - %s" message
-  | `Unimplemented   -> "operation not yet implemented"
-  | `Disconnected    -> "device is disconnected"
+let pp_error fmt = function
+  | `Unknown message -> Format.fprintf fmt "undiagnosed error - %s" message
+  | `Unimplemented   -> Format.fprintf fmt "operation not yet implemented"
+  | `Disconnected    -> Format.fprintf fmt "device is disconnected"
 
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
   let buf = Io_page.to_cstruct page in
-  try_lwt
-    (Lwt_cstruct.read t.dev buf
-     >>= function
-     | (-1) -> (* EAGAIN or EWOULDBLOCK *)
-       read t page
-     | 0 -> (* EOF *)
-       return (`Error `Disconnected)
-     | len ->
-       t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
-       t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
-       return (`Ok (Cstruct.sub buf 0 len)))
-  with
-   | Unix.Unix_error(Unix.ENXIO, _, _) ->
-     printf "[netif-input] device %s is down\n%!" t.id;
-     return (`Error `Disconnected)
-   | exn ->
-     printf "[netif-input] error : %s\n%!" (Printexc.to_string exn);
-     return `Continue
+  let process () =
+    Lwt.catch (fun () ->
+        Lwt_cstruct.read t.dev buf >>= function
+        | (-1) -> Lwt.return `EAGAIN                 (* EAGAIN or EWOULDBLOCK *)
+        | 0    -> err_disconnected ()                                  (* EOF *)
+        | len ->
+          t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
+          t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
+          let buf = Cstruct.sub buf 0 len in
+          ok buf)
+      (function
+        | Unix.Unix_error(Unix.ENXIO, _, _) ->
+          log "[read] device %s is down, stopping" t.id;
+          err_disconnected ()
+        | exn ->
+          log "[read] error: %s, continuing" (Printexc.to_string exn);
+          Lwt.return `Continue)
+  in
+  process () >>= function
+  | `EAGAIN -> read t page
+  | `Error _ | `Continue | `Ok _ as r -> Lwt.return r
 
-(* Loop and listen for packets permanently *)
+let safe_apply f x =
+  Lwt.catch
+    (fun () -> f x)
+    (fun exn ->
+       log "[listen] error while handling %s, continuing. bt: %s"
+         (Printexc.to_string exn) (Printexc.get_backtrace ());
+       Lwt.return_unit)
+
+    (* Loop and listen for packets permanently *)
 (* this function has to be tail recursive, since it is called at the
    top level, otherwise memory of received packets and all reachable
    data is never claimed.  take care when modifying, here be dragons! *)
@@ -118,40 +139,33 @@ let rec listen t fn =
   match t.active with
   | true ->
     let page = Io_page.get 1 in
-    read t page >|= (function
-        | `Error e ->
-          printf "[netif] error, %s, terminating listen loop\n%!" (error_to_string e);
-          t.active <- false
-        | `Continue -> ()
-        | `Ok buf ->
-          ignore_result
-            (try_lwt
-               fn buf
-             with exn ->
-               printf "[netif] error while handling %s bt: %s\n%!"
-                 (Printexc.to_string exn) (Printexc.get_backtrace ());
-               return_unit))
-    >>= fun () ->
+    let process () =
+      read t page >|= function
+      | `Continue -> ()
+      | `Ok buf   -> Lwt.async (fun () -> safe_apply fn buf)
+      | `Error e  ->
+        log "[listen] error, %a, terminating listen loop" pp_error e;
+        t.active <- false
+    in
+    process () >>= fun () ->
     listen t fn
-  | false -> return_unit
+  | false -> Lwt.return_unit
 
 (* Transmit a packet from an Io_page *)
 let write t page =
+  let open Cstruct in
   (* Unfortunately we peek inside the cstruct type here: *)
-  lwt len' = Lwt_bytes.write t.dev page.Cstruct.buffer page.Cstruct.off page.Cstruct.len in
+  Lwt_bytes.write t.dev page.buffer page.off page.len >>= fun len' ->
   t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
-  t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int page.Cstruct.len);
-  if len' <> page.Cstruct.len then
-    raise_lwt (Failure (sprintf "tap: partial write (%d, expected %d)" len' page.Cstruct.len))
-  else
-    return ()
+  t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int page.len);
+  if len' <> page.len then err_partial_write len' page
+  else Lwt.return_unit
 
 (* TODO use writev: but do a copy for now *)
-let writev t pages =
-  match pages with
-  |[] -> return ()
-  |[page] -> write t page
-  |pages ->
+let writev t = function
+  | []     -> Lwt.return_unit
+  | [page] -> write t page
+  | pages  ->
     let page = Io_page.(to_cstruct (get 1)) in
     let off = ref 0 in
     List.iter (fun p ->
@@ -161,8 +175,6 @@ let writev t pages =
       ) pages;
     let v = Cstruct.sub page 0 !off in
     write t v
-
-let id t = t.id
 
 let mac t = t.mac
 

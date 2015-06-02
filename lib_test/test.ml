@@ -18,18 +18,21 @@ open Lwt
 open OUnit
 open Printf
 
+let err_connect e =
+  let buf = Buffer.create 10 in
+  let fmt = Format.formatter_of_buffer buf in
+  Format.fprintf fmt "didnt connect: %a" Netif.pp_error e;
+  failwith (Buffer.contents buf)
+
 let test_open () =
   let thread =
-    Netif.connect "tap0" 
-    >>= function
-    | `Error (`Unknown s) -> raise (Failure ("didnt connect: " ^ s))
-    | `Error e -> raise (Failure "didnt connect")
-    | `Ok t ->
+    Netif.connect "tap0" >>= function
+    | `Error e -> err_connect e
+    | `Ok t    ->
       printf "connected\n%!";
-      Netif.listen t
-        (fun buf ->
-           printf "got packet of len %d\n%!" (Cstruct.len buf);
-           return ()
+      Netif.listen t (fun buf ->
+          printf "got packet of len %d\n%!" (Cstruct.len buf);
+          Lwt.return_unit
         )
   in
   Lwt_main.run thread

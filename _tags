@@ -46,4 +46,5 @@ true: annot, bin_annot
 <lib_test/test.{native,byte}>: custom
 # OASIS_STOP
 true: debug, annot, bin_annot
-true: syntax_camlp4o, pkg_lwt.syntax
+true: warn_error(+1..49), warn(A-4-41-44)
+true: short_paths
