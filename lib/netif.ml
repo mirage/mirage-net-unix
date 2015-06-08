@@ -68,7 +68,7 @@ let err_partial_write len' page =
 let connect devname =
   try
     let fd, devname = Tuntap.opentap ~pi:false ~devname () in
-    let dev = Lwt_unix.of_unix_file_descr ~blocking:false fd in
+    let dev = Lwt_unix.of_unix_file_descr ~blocking:true fd in
     let mac = Macaddr.make_local (fun _ -> Random.int 256) in
     Tuntap.set_up_and_running devname;
     log "plugging into %s with mac %s" devname (Macaddr.to_string mac);
@@ -131,7 +131,7 @@ let safe_apply f x =
          (Printexc.to_string exn) (Printexc.get_backtrace ());
        Lwt.return_unit)
 
-    (* Loop and listen for packets permanently *)
+(* Loop and listen for packets permanently *)
 (* this function has to be tail recursive, since it is called at the
    top level, otherwise memory of received packets and all reachable
    data is never claimed.  take care when modifying, here be dragons! *)
