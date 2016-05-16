@@ -67,6 +67,7 @@ let err_partial_write len' page =
 
 let connect devname =
   try
+    Random.self_init ();
     let fd, devname = Tuntap.opentap ~pi:false ~devname () in
     let dev = Lwt_unix.of_unix_file_descr ~blocking:true fd in
     let mac = Macaddr.make_local (fun _ -> Random.int 256) in
