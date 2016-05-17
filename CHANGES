@@ -1,3 +1,7 @@
+2.2.3 (17-May-2016):
+* Generate a random MAC address for the interface on each run. (#24, from @yomimono)
+* Remove unused id type (#21, from @talex5)
+
 2.2.2 (07-Jun-2015):
 * Force non-blocking mode in the tun file descriptor to workaround
   a Linux 3.19+ kernel bug (see mirage/ocaml-tuntap#15).

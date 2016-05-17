@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        mirage-net-unix
-Version:     2.2.2
+Version:     2.2.3
 Synopsis:    Mirage network driver for Unix
 Authors:     Anil Madhavapeddy, David Scott, Thomas Gazagnaire, Hannes Mehnert
 License:     ISC
