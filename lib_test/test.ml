@@ -29,14 +29,18 @@ let err_connect e =
 let test_open () =
     Netif.connect "tap0" >>= function
     | `Error e -> err_connect e
+    | `Ok _t    ->
+      printf "connected\n%!";
+      Lwt.return_unit
+
+let test_close () =
+    Netif.connect "tap1" >>= function
+    | `Error e -> err_connect e
     | `Ok t    ->
       printf "connected\n%!";
-      Netif.listen t (fun buf ->
-          printf "got packet of len %d\n%!" (Cstruct.len buf);
-          Lwt.return_unit
-        )
-  in
-  Lwt_main.run thread
+      Netif.disconnect t >>= function () ->
+      printf "disconnected\n%!";
+      Lwt.return_unit
 
 let suite : Alcotest.test_case list = [
   "connect", `Quick, (fun () -> run test_open) ;
