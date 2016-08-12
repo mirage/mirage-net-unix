@@ -15,8 +15,10 @@
  *)
 
 open Lwt
-open OUnit
 open Printf
+
+let run test =
+  Lwt_main.run (test ())
 
 let err_connect e =
   let buf = Buffer.create 10 in
@@ -25,7 +27,6 @@ let err_connect e =
   failwith (Buffer.contents buf)
 
 let test_open () =
-  let thread =
     Netif.connect "tap0" >>= function
     | `Error e -> err_connect e
     | `Ok t    ->
@@ -37,14 +38,10 @@ let test_open () =
   in
   Lwt_main.run thread
 
-let _ =
-  let verbose = ref false in
-  Arg.parse [
-    "-verbose", Arg.Unit (fun _ -> verbose := true), "Run in verbose mode";
-  ] (fun x -> Printf.fprintf stderr "Ignoring argument: %s" x)
-    "Test unix net driver";
+let suite : Alcotest.test_case list = [
+  "connect", `Quick, (fun () -> run test_open) ;
+  "disconnect", `Quick, (fun () -> run test_close)
+]
 
-  let suite = "net" >::: [
-      "test open" >:: test_open;
-    ] in
-  run_test_tt ~verbose:!verbose suite
+let _ =
+  Alcotest.run "mirage-net-unix" [ "tests", suite ]
