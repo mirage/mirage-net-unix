@@ -87,7 +87,9 @@ let connect devname =
 
 let disconnect t =
   log "disconnect %s" t.id;
-  Tuntap.closetun t.id;
+  t.active <- false;
+  Lwt_unix.close t.dev >>= fun () ->
+  Tuntap.closetap t.id;
   Lwt.return_unit
 
 type macaddr = Macaddr.t
