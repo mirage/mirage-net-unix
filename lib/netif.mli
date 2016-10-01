@@ -23,7 +23,7 @@ include V1.NETWORK
    and type buffer = Cstruct.t
    and type macaddr = Macaddr.t
 
-val connect : string -> [`Ok of t | `Error of error] io
+val connect : string -> t io
 (** [connect tap] connects to the given tap interface. *)
 
 val pp_error: Format.formatter -> error -> unit
