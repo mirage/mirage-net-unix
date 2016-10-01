@@ -15,8 +15,10 @@
  *)
 
 open Lwt
-open OUnit
 open Printf
+
+let run test =
+  Lwt_main.run (test ())
 
 let err_connect e =
   let buf = Buffer.create 10 in
@@ -25,26 +27,35 @@ let err_connect e =
   failwith (Buffer.contents buf)
 
 let test_open () =
-  let thread =
-    Netif.connect "tap0" >>= function
-    | `Error e -> err_connect e
-    | `Ok t    ->
-      printf "connected\n%!";
-      Netif.listen t (fun buf ->
-          printf "got packet of len %d\n%!" (Cstruct.len buf);
-          Lwt.return_unit
-        )
-  in
-  Lwt_main.run thread
+  Netif.connect "tap0" >>= function
+  | `Error e -> err_connect e
+  | `Ok _t    ->
+    printf "connected\n%!";
+    Lwt.return_unit
+
+let test_close () =
+  Netif.connect "tap1" >>= function
+  | `Error e -> err_connect e
+  | `Ok t    ->
+    printf "connected\n%!";
+    Netif.disconnect t >>= function () ->
+    printf "disconnected\n%!";
+    Lwt.return_unit
+
+let test_write () =
+  Netif.connect "tap2" >>= function
+  | `Error e -> err_connect e
+  | `Ok t    ->
+    let data = Cstruct.create 4096 in
+    Netif.writev t [ data ] >>= fun () ->
+    Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun () ->
+    Lwt.return_unit
+
+let suite : Alcotest.test_case list = [
+  "connect", `Quick, (fun () -> run test_open) ;
+  "disconnect", `Quick, (fun () -> run test_close);
+  "write", `Quick, (fun () -> run test_write);
+]
 
 let _ =
-  let verbose = ref false in
-  Arg.parse [
-    "-verbose", Arg.Unit (fun _ -> verbose := true), "Run in verbose mode";
-  ] (fun x -> Printf.fprintf stderr "Ignoring argument: %s" x)
-    "Test unix net driver";
-
-  let suite = "net" >::: [
-      "test open" >:: test_open;
-    ] in
-  run_test_tt ~verbose:!verbose suite
+  Alcotest.run "mirage-net-unix" [ "tests", suite ]
