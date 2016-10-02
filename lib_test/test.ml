@@ -20,36 +20,24 @@ open Printf
 let run test =
   Lwt_main.run (test ())
 
-let err_connect e =
-  let buf = Buffer.create 10 in
-  let fmt = Format.formatter_of_buffer buf in
-  Format.fprintf fmt "didnt connect: %a" Netif.pp_error e;
-  failwith (Buffer.contents buf)
-
 let test_open () =
-  Netif.connect "tap0" >>= function
-  | `Error e -> err_connect e
-  | `Ok _t    ->
-    printf "connected\n%!";
-    Lwt.return_unit
+  Netif.connect "tap0" >>= fun _t ->
+  printf "connected\n%!";
+  Lwt.return_unit
 
 let test_close () =
-  Netif.connect "tap1" >>= function
-  | `Error e -> err_connect e
-  | `Ok t    ->
-    printf "connected\n%!";
-    Netif.disconnect t >>= function () ->
-    printf "disconnected\n%!";
-    Lwt.return_unit
+  Netif.connect "tap1" >>= fun t ->
+  printf "connected\n%!";
+  Netif.disconnect t >>= fun () ->
+  printf "disconnected\n%!";
+  Lwt.return_unit
 
 let test_write () =
-  Netif.connect "tap2" >>= function
-  | `Error e -> err_connect e
-  | `Ok t    ->
-    let data = Cstruct.create 4096 in
-    Netif.writev t [ data ] >>= fun () ->
-    Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun () ->
-    Lwt.return_unit
+  Netif.connect "tap2" >>= fun t ->
+  let data = Cstruct.create 4096 in
+  Netif.writev t [ data ] >>= fun () ->
+  Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun () ->
+  Lwt.return_unit
 
 let suite : Alcotest.test_case list = [
   "connect", `Quick, (fun () -> run test_open) ;
