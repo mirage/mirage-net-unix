@@ -25,6 +25,3 @@ include V1.NETWORK
 
 val connect : string -> t io
 (** [connect tap] connects to the given tap interface. *)
-
-val pp_error: Format.formatter -> error -> unit
-(** Pretty-print the error. *)

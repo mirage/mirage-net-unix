@@ -15,29 +15,18 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
+open Result
+open V1.Network
+
 let log fmt = Format.printf ("Netif: " ^^ fmt ^^ "\n%!")
 
 let (>>=) = Lwt.(>>=)
 let (>|=) = Lwt.(>|=)
 
 type +'a io = 'a Lwt.t
-type id = string
-
-type error = [
-  | `Unknown of string
-  | `Unimplemented
-  | `Disconnected
-]
-
-type stats = {
-  mutable rx_bytes : int64;
-  mutable rx_pkts : int32;
-  mutable tx_bytes : int64;
-  mutable tx_pkts : int32;
-}
 
 type t = {
-  id: id;
+  id: string;
   dev: Lwt_unix.file_descr;
   mutable active: bool;
   mutable mac: Macaddr.t;
@@ -46,20 +35,11 @@ type t = {
 
 let devices = Hashtbl.create 1
 
-let err e = Lwt.return (`Error e)
-let fail fmt = Printf.ksprintf (fun str -> Lwt.fail (Failure str)) fmt
-let ok x = Lwt.return (`Ok x)
-
-let err_disconnected () = err `Disconnected
-
 let err_permission_denied devname =
   Printf.sprintf
     "Permission denied while opening the %s tun device. \n\
      Please re-run using sudo, and install the TuntapOSX \n\
      package if you are on MacOS X." devname
-
-let err_partial_write len' page =
-  fail "tap: partial write (%d, expected %d)" len' page.Cstruct.len
 
 let connect devname =
   try
@@ -92,35 +72,31 @@ type macaddr = Macaddr.t
 type page_aligned_buffer = Io_page.t
 type buffer = Cstruct.t
 
-let pp_error fmt = function
-  | `Unknown message -> Format.fprintf fmt "undiagnosed error - %s" message
-  | `Unimplemented   -> Format.fprintf fmt "operation not yet implemented"
-  | `Disconnected    -> Format.fprintf fmt "device is disconnected"
-
 (* Input a frame, and block if nothing is available *)
 let rec read t page =
   let buf = Io_page.to_cstruct page in
   let process () =
     Lwt.catch (fun () ->
-        Lwt_cstruct.read t.dev buf >>= function
-        | (-1) -> Lwt.return `EAGAIN                 (* EAGAIN or EWOULDBLOCK *)
-        | 0    -> err_disconnected ()                                  (* EOF *)
+        Lwt_cstruct.read t.dev buf >|= function
+        | (-1) -> Error `Continue      (* EAGAIN or EWOULDBLOCK *)
+        | 0    -> Error `Disconnected  (* EOF *)
         | len ->
           t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
           t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
           let buf = Cstruct.sub buf 0 len in
-          ok buf)
+          Ok buf)
       (function
         | Unix.Unix_error(Unix.ENXIO, _, _) ->
           log "[read] device %s is down, stopping" t.id;
-          err_disconnected ()
+          Lwt.return (Error `Disconnected)
         | exn ->
           log "[read] error: %s, continuing" (Printexc.to_string exn);
-          Lwt.return `Continue)
+          Lwt.return (Error `Continue))
   in
   process () >>= function
-  | `EAGAIN -> read t page
-  | `Error _ | `Continue | `Ok _ as r -> Lwt.return r
+  | Error `Continue -> read t page
+  | Error `Disconnected -> Lwt.return (Error `Disconnected)
+  | Ok buf -> Lwt.return (Ok buf)
 
 let safe_apply f x =
   Lwt.catch
@@ -140,28 +116,32 @@ let rec listen t fn =
     let page = Io_page.get 1 in
     let process () =
       read t page >|= function
-      | `Continue -> ()
-      | `Ok buf   -> Lwt.async (fun () -> safe_apply fn buf)
-      | `Error e  ->
-        log "[listen] error, %a, terminating listen loop" pp_error e;
-        t.active <- false
+      | Ok buf              -> Lwt.async (fun () -> safe_apply fn buf) ; Ok ()
+      | Error `Disconnected -> t.active <- false ; Error `Disconnected
     in
-    process () >>= fun () ->
-    listen t fn
-  | false -> Lwt.return_unit
+    process () >>= (function
+        | Ok () -> listen t fn
+        | Error e -> Lwt.return (Error e))
+  | false -> Lwt.return (Ok ())
 
 (* Transmit a packet from a Cstruct.t *)
 let write t buffer =
   let open Cstruct in
   (* Unfortunately we peek inside the cstruct type here: *)
-  Lwt_bytes.write t.dev buffer.buffer buffer.off buffer.len >>= fun len' ->
-  t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
-  t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int buffer.len);
-  if len' <> buffer.len then err_partial_write len' buffer
-  else Lwt.return_unit
+  (* This is the interface to the cruel Lwt world with exceptions, we've to guard *)
+  Lwt.catch (fun () ->
+      Lwt_bytes.write t.dev buffer.buffer buffer.off buffer.len >>= fun len' ->
+      t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
+      t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int buffer.len);
+      if len' <> buffer.len then
+        let err = Printf.sprintf "netif %s: partial write (%d, expected %d)" t.id len' buffer.len in
+        Lwt.return (Error (`Unknown err))
+      else Lwt.return (Ok ()))
+    (fun exn -> Lwt.return (Error (`Unknown (Printexc.to_string exn))))
+
 
 let writev t = function
-  | []     -> Lwt.return_unit
+  | []     -> Lwt.return (Ok ())
   | [page] -> write t page
   | pages  ->
     write t @@ Cstruct.concat pages

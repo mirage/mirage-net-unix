@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: e2a972a46ecf908b3818d7dca4061cda)
+# DO NOT EDIT (digest: b43e58aef59037440236bbeb248a4b24)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -21,6 +21,7 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: pkg_io-page.unix
 <lib/*.ml{,i,y}>: pkg_lwt.unix
 <lib/*.ml{,i,y}>: pkg_mirage-types
+<lib/*.ml{,i,y}>: pkg_result
 <lib/*.ml{,i,y}>: pkg_tuntap
 # Executable test
 <lib_test/test.{native,byte}>: pkg_alcotest
@@ -31,6 +32,7 @@ true: annot, bin_annot
 <lib_test/test.{native,byte}>: pkg_lwt
 <lib_test/test.{native,byte}>: pkg_lwt.unix
 <lib_test/test.{native,byte}>: pkg_mirage-types
+<lib_test/test.{native,byte}>: pkg_result
 <lib_test/test.{native,byte}>: pkg_tuntap
 <lib_test/test.{native,byte}>: use_mirage-net-unix
 <lib_test/*.ml{,i,y}>: pkg_alcotest
@@ -41,6 +43,7 @@ true: annot, bin_annot
 <lib_test/*.ml{,i,y}>: pkg_lwt
 <lib_test/*.ml{,i,y}>: pkg_lwt.unix
 <lib_test/*.ml{,i,y}>: pkg_mirage-types
+<lib_test/*.ml{,i,y}>: pkg_result
 <lib_test/*.ml{,i,y}>: pkg_tuntap
 <lib_test/*.ml{,i,y}>: use_mirage-net-unix
 <lib_test/test.{native,byte}>: custom
