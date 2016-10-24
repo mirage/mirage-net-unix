@@ -1,6 +1,7 @@
 language: c
 install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-opam.sh
-script: bash -ex .travis-opam.sh
+sudo: required
+script: sudo bash -ex .travis-opam.sh # sudo because we're going to use tuntap
 env:
   global:
   - PACKAGE=mirage-net-unix EXTRA_REMOTES="git://github.com/mirage/mirage-dev.git"
