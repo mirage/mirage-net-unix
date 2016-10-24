@@ -35,8 +35,8 @@ let test_close () =
 let test_write () =
   Netif.connect "tap2" >>= fun t ->
   let data = Cstruct.create 4096 in
-  Netif.writev t [ data ] >>= fun () ->
-  Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun () ->
+  Netif.writev t [ data ] >>= fun _t ->
+  Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun _t ->
   Lwt.return_unit
 
 let suite : Alcotest.test_case list = [
