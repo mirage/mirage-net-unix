@@ -14,4 +14,4 @@ setup.log
 _build
 *.native
 .*.swp
-_tests/*
+_tests
