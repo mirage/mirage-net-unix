@@ -37,9 +37,8 @@ let devices = Hashtbl.create 1
 
 let err_permission_denied devname =
   Printf.sprintf
-    "Permission denied while opening the %s tun device. \n\
-     Please re-run using sudo, and install the TuntapOSX \n\
-     package if you are on MacOS X." devname
+    "Permission denied while opening the %s device. Please re-run using sudo."
+    devname
 
 let connect devname =
   try
