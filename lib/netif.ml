@@ -134,9 +134,9 @@ let write t buffer =
       t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int buffer.len);
       if len' <> buffer.len then
         let err = Printf.sprintf "netif %s: partial write (%d, expected %d)" t.id len' buffer.len in
-        Lwt.return (Error (`Unknown err))
+        Lwt.return (Error (`Msg err))
       else Lwt.return (Ok ()))
-    (fun exn -> Lwt.return (Error (`Unknown (Printexc.to_string exn))))
+    (fun exn -> Lwt.return (Error (`Msg (Printexc.to_string exn))))
 
 
 let writev t = function
