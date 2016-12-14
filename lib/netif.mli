@@ -17,11 +17,7 @@
 
 (** Implementation of the network interface for Unix backends. *)
 
-include V1.NETWORK
-  with type 'a io = 'a Lwt.t
-   and type page_aligned_buffer = Io_page.t
-   and type buffer = Cstruct.t
-   and type macaddr = Macaddr.t
+include V1_LWT.NETWORK
 
 val connect : string -> t io
 (** [connect tap] connects to the given tap interface. *)
