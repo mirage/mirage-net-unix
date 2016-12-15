@@ -11,7 +11,7 @@ bug-reports: "https://github.com/mirage/mirage-net-unix/issues"
 dev-repo:    "https://github.com/mirage/mirage-net-unix.git"
 license:     "ISC"
 
-build:   [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" ]
+build:   [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false" ]
 build-test: [
   [ "ocaml" "pkg/pkg.ml" "build" "--tests" "true" ]
   [ "ocaml" "pkg/pkg.ml" "test" ]
