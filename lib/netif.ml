@@ -33,6 +33,19 @@ type t = {
   stats : stats;
 }
 
+type error = [
+  | V1.Network.error
+  | `Partial of string * int * Cstruct.t
+  | `Exn of exn
+]
+
+let pp_error ppf = function
+  | #V1.Network.error as e -> Mirage_pp.pp_network_error ppf e
+  | `Partial (id, len', buffer) ->
+    Fmt.pf ppf "netif %s: partial write (%d, expected %d)"
+      id len' buffer.Cstruct.len
+  | `Exn e -> Fmt.exn ppf e
+
 let devices = Hashtbl.create 1
 
 let err_permission_denied devname =
@@ -129,14 +142,12 @@ let write t buffer =
   (* Unfortunately we peek inside the cstruct type here: *)
   (* This is the interface to the cruel Lwt world with exceptions, we've to guard *)
   Lwt.catch (fun () ->
-      Lwt_bytes.write t.dev buffer.buffer buffer.off buffer.len >>= fun len' ->
+      Lwt_bytes.write t.dev buffer.buffer buffer.off buffer.len >|= fun len' ->
       t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
       t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int buffer.len);
-      if len' <> buffer.len then
-        let err = Printf.sprintf "netif %s: partial write (%d, expected %d)" t.id len' buffer.len in
-        Lwt.return (Error (`Msg err))
-      else Lwt.return (Ok ()))
-    (fun exn -> Lwt.return (Error (`Msg (Printexc.to_string exn))))
+      if len' <> buffer.len then Error (`Partial (t.id, len', buffer))
+      else Ok ())
+    (fun exn -> Lwt.return (Error (`Exn exn)))
 
 
 let writev t = function

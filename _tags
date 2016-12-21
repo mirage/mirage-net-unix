@@ -1,6 +1,7 @@
 true: debug, annot, bin_annot
-true: warn_error(+1..49), warn(A-4-41-44)
+true: warn_error(+1..49), warn(A-4-41-44-52)
 true: short_paths
-true: package(io-page io-page.unix cstruct cstruct.lwt lwt.unix mirage-types mirage-types-lwt tuntap result)
+true: package(io-page io-page.unix cstruct cstruct.lwt lwt.unix mirage-types)
+true: package(mirage-types-lwt tuntap result mirage-runtime)
 <lib> : include
 <lib_test/*>: package(alcotest)
