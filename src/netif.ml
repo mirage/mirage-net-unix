@@ -132,7 +132,7 @@ let rec listen t fn =
       | Error `Disconnected -> t.active <- false ; Error `Disconnected
     in
     process () >>= (function
-        | Ok () -> listen t fn
+        | Ok () -> (listen[@tailcall]) t fn
         | Error e -> Lwt.return (Error e))
   | false -> Lwt.return (Ok ())
 
