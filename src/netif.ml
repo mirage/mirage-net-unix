@@ -101,12 +101,16 @@ let rec read t page =
         | Unix.Unix_error(Unix.ENXIO, _, _) ->
           log "[read] device %s is down, stopping" t.id;
           Lwt.return (Error `Disconnected)
+        | Lwt.Canceled ->
+          log "[read] user program requested cancellation of listen on %s" t.id;
+          Lwt.return (Error `Canceled)
         | exn ->
           log "[read] error: %s, continuing" (Printexc.to_string exn);
           Lwt.return (Error `Continue))
   in
   process () >>= function
   | Error `Continue -> read t page
+  | Error `Canceled -> Lwt.return (Error `Canceled)
   | Error `Disconnected -> Lwt.return (Error `Disconnected)
   | Ok buf -> Lwt.return (Ok buf)
 
@@ -129,6 +133,7 @@ let rec listen t fn =
     let process () =
       read t page >|= function
       | Ok buf              -> Lwt.async (fun () -> safe_apply fn buf) ; Ok ()
+      | Error `Canceled     -> Error `Disconnected
       | Error `Disconnected -> t.active <- false ; Error `Disconnected
     in
     process () >>= (function
