@@ -5,6 +5,6 @@ open Topkg
 
 let () =
   Pkg.describe "mirage-net-unix" @@ fun c ->
-  Ok [ Pkg.mllib "lib/mirage-net-unix.mllib";
-       Pkg.test "lib_test/test"
+  Ok [ Pkg.mllib "src/mirage-net-unix.mllib";
+       Pkg.test "test/test"
   ]
