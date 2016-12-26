@@ -1,6 +1,6 @@
 description = "Mirage network driver for Unix"
 version = "%%VERSION_NUM%%"
-requires = "cstruct.lwt cstruct lwt lwt.unix mirage-types mirage-types-lwt tuntap io-page.unix io-page result"
+requires = "cstruct.lwt cstruct lwt lwt.unix mirage-net-lwt tuntap io-page.unix io-page result"
 archive(byte) = "mirage-net-unix.cma"
 archive(native) = "mirage-net-unix.cmxa"
 plugin(byte) = "mirage-net-unix.cma"
