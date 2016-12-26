@@ -16,7 +16,7 @@
  *)
 
 open Result
-open V1.Network
+open Mirage_net
 
 let log fmt = Format.printf ("Netif: " ^^ fmt ^^ "\n%!")
 
@@ -30,17 +30,17 @@ type t = {
   dev: Lwt_unix.file_descr;
   mutable active: bool;
   mutable mac: Macaddr.t;
-  stats : stats;
+  stats : Mirage_net.stats;
 }
 
 type error = [
-  | V1.Network.error
+  | Mirage_net.error
   | `Partial of string * int * Cstruct.t
   | `Exn of exn
 ]
 
 let pp_error ppf = function
-  | #V1.Network.error as e -> Mirage_pp.pp_network_error ppf e
+  | #Mirage_net.error as e -> Mirage_net.pp_error ppf e
   | `Partial (id, len', buffer) ->
     Fmt.pf ppf "netif %s: partial write (%d, expected %d)"
       id len' buffer.Cstruct.len
@@ -70,7 +70,8 @@ let connect devname =
     log "connect %s" devname;
     Lwt.return t
   with
-  | Failure "tun[open]: Permission denied" -> Lwt.fail_with (err_permission_denied devname)
+  | Failure "tun[open]: Permission denied" ->
+    Lwt.fail_with (err_permission_denied devname)
   | exn -> Lwt.fail exn
 
 let disconnect t =

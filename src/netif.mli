@@ -17,7 +17,7 @@
 
 (** Implementation of the network interface for Unix backends. *)
 
-include V1_LWT.NETWORK
+include Mirage_net_lwt.S
 
-val connect : string -> t io
+val connect : string -> t Lwt.t
 (** [connect tap] connects to the given tap interface. *)

@@ -1,4 +1,4 @@
-PKG lwt alcotest cstruct tuntap io-page mirage-types-lwt mirage-runtime
+PKG lwt alcotest cstruct tuntap io-page mirage-net-lwt
 S lib/
 S lib_test/
 B _build/lib/
