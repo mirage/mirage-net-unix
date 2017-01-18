@@ -1,3 +1,11 @@
+2.3.0 (unreleased):
+* Support MirageOS 3; drop support for earlier versions
+* `listen` no longer restarts itself when canceled (#36, from @yomimono)
+* Remove misleading error message referencing OSX (#31, from @hannesm)
+* Use topkg instead of OASIS
+* `writev` no longer fails when called with a list of total length > 1 page (#26, by @yomimono)
+* `disconnect` no longer causes a crash on invocation (#26, by @yomimono)
+
 2.2.3 (17-May-2016):
 * Generate a random MAC address for the interface on each run. (#24, from @yomimono)
 * Remove unused id type (#21, from @talex5)
