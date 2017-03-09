@@ -21,3 +21,6 @@ include Mirage_net_lwt.S
 
 val connect : string -> t Lwt.t
 (** [connect tap] connects to the given tap interface. *)
+
+val fd: t -> Lwt_unix.file_descr
+(** [fd t] is [t]'s underneath file descriptor. *)
