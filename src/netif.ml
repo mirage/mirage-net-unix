@@ -33,6 +33,8 @@ type t = {
   stats : Mirage_net.stats;
 }
 
+let fd t = t.dev
+
 type error = [
   | Mirage_net.error
   | `Partial of string * int * Cstruct.t
