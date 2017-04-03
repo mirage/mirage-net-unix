@@ -1,3 +1,7 @@
+### 2.4.0 (02-Apr-2017)
+
+* Expose the underlying fd (#40, from @samoht)
+
 ### 2.3.0 (20-Jan-2017)
 
 * Support MirageOS 3; drop support for earlier versions
