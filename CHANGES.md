@@ -1,3 +1,8 @@
+### 2.4.1 (16-Jun-2017)
+
+* Build with jbuilder
+* Update to use io-page-unix
+
 ### 2.4.0 (02-Apr-2017)
 
 * Expose the underlying fd (#40, from @samoht)
