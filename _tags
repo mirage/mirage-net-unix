@@ -1,7 +1,0 @@
-true: debug, annot, bin_annot
-true: warn_error(+1..49), warn(A-4-41-44-52)
-true: short_paths
-true: package(io-page io-page.unix cstruct cstruct.lwt lwt.unix)
-true: package(mirage-net-lwt tuntap result)
-<src> : include
-<test/*>: package(alcotest)
