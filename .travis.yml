@@ -1,10 +1,13 @@
 language: c
-install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-opam.sh
-sudo: required
-script: sudo bash -ex .travis-opam.sh # sudo because we're going to use tuntap
+sudo: false
+services:
+  - docker
+install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-docker.sh
+script: bash -ex ./.travis-docker.sh
 env:
   global:
-  - PACKAGE=mirage-net-unix EXTRA_REMOTES="git://github.com/mirage/mirage-dev.git"
+  - EXTRA_REMOTES="https://github.com/djs55/opam-repository.git#io-page"
+  - PACKAGE="mirage-net-unix"
   matrix:
-  - OCAML_VERSION=4.02
-  - OCAML_VERSION=4.03
+  - DISTRO="debian-testing" OCAML_VERSION="4.03.0"
+  - DISTRO="alpine-3.4" OCAML_VERSION="4.04.0"

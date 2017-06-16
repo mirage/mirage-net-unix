@@ -1,6 +1,17 @@
-all:
-	ocaml pkg/pkg.ml build --tests true
-	ocaml pkg/pkg.ml test
+
+.PHONY: build clean test
+
+build:
+	jbuilder build @install --dev
+
+test:
+	jbuilder runtest --dev
+
+install:
+	jbuilder install
+
+uninstall:
+	jbuilder uninstall
 
 clean:
-	ocaml pkg/pkg.ml clean
+	rm -rf _build
