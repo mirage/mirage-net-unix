@@ -39,7 +39,7 @@ let test_write () =
   Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun _t ->
   Lwt.return_unit
 
-let suite : Alcotest.test_case list = [
+let suite = [
   "connect", `Quick, (fun () -> run test_open) ;
   "disconnect", `Quick, (fun () -> run test_close);
   "write", `Quick, (fun () -> run test_write);
