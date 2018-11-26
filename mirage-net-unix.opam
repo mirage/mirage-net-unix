@@ -26,5 +26,6 @@ depends: [
   "io-page-unix" {>= "2.0.0"}
   "tuntap" {>= "1.3.0"}
   "alcotest" {test}
+  "logs"
 ]
 available: [ ocaml-version >= "4.04.2"]
