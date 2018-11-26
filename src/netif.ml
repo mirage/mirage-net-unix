@@ -14,15 +14,13 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
+open Lwt.Infix
 
 [@@@warning "-52"]
-open Result
 open Mirage_net
 
-let log fmt = Format.printf ("Netif: " ^^ fmt ^^ "\n%!")
-
-let (>>=) = Lwt.(>>=)
-let (>|=) = Lwt.(>|=)
+let src = Logs.Src.create "netif" ~doc:"Mirage unix network module"
+module Log = (val Logs.src_log src : Logs.LOG)
 
 type +'a io = 'a Lwt.t
 
@@ -30,26 +28,25 @@ type t = {
   id: string;
   dev: Lwt_unix.file_descr;
   mutable active: bool;
-  mutable mac: Macaddr.t;
+  mac: Macaddr.t;
+  mtu : int;
   stats : Mirage_net.stats;
 }
 
 let fd t = t.dev
 
 type error = [
-  | Mirage_net.error
+  | Mirage_net.Net.error
   | `Partial of string * int * Cstruct.t
   | `Exn of exn
 ]
 
 let pp_error ppf = function
-  | #Mirage_net.error as e -> Mirage_net.pp_error ppf e
+  | #Mirage_net.Net.error as e -> Mirage_net.Net.pp_error ppf e
   | `Partial (id, len', buffer) ->
     Fmt.pf ppf "netif %s: partial write (%d, expected %d)"
       id len' buffer.Cstruct.len
   | `Exn e -> Fmt.exn ppf e
-
-let devices = Hashtbl.create 1
 
 let err_permission_denied devname =
   Printf.sprintf
@@ -63,14 +60,15 @@ let connect devname =
     let dev = Lwt_unix.of_unix_file_descr ~blocking:true fd in
     let mac = Macaddr.make_local (fun _ -> Random.int 256) in
     Tuntap.set_up_and_running devname;
-    log "plugging into %s with mac %s" devname (Macaddr.to_string mac);
+    let mtu = Tuntap.get_mtu devname in
+    Log.debug (fun m -> m "plugging into %s with mac %a and mtu %d"
+                  devname Macaddr.pp mac mtu);
     let active = true in
     let t = {
-      id=devname; dev; active; mac;
+      id=devname; dev; active; mac; mtu;
       stats= { rx_bytes=0L;rx_pkts=0l; tx_bytes=0L; tx_pkts=0l } }
     in
-    Hashtbl.add devices devname t;
-    log "connect %s" devname;
+    Log.info (fun m -> m "connect %s with mac %a" devname Macaddr.pp mac);
     Lwt.return t
   with
   | Failure "tun[open]: Permission denied" ->
@@ -78,19 +76,17 @@ let connect devname =
   | exn -> Lwt.fail exn
 
 let disconnect t =
-  log "disconnect %s" t.id;
+  Log.info (fun m -> m "disconnect %s" t.id);
   t.active <- false;
   Lwt_unix.close t.dev >>= fun () ->
   Tuntap.closetap t.id;
   Lwt.return_unit
 
 type macaddr = Macaddr.t
-type page_aligned_buffer = Io_page.t
 type buffer = Cstruct.t
 
 (* Input a frame, and block if nothing is available *)
-let rec read t page =
-  let buf = Io_page.to_cstruct page in
+let rec read t buf =
   let process () =
     Lwt.catch (fun () ->
         Lwt_cstruct.read t.dev buf >|= function
@@ -103,17 +99,17 @@ let rec read t page =
           Ok buf)
       (function
         | Unix.Unix_error(Unix.ENXIO, _, _) ->
-          log "[read] device %s is down, stopping" t.id;
+          Log.err (fun m -> m "[read] device %s is down, stopping" t.id);
           Lwt.return (Error `Disconnected)
         | Lwt.Canceled ->
-          log "[read] user program requested cancellation of listen on %s" t.id;
+          Log.err (fun m -> m "[read] user program requested cancellation of listen on %s" t.id);
           Lwt.return (Error `Canceled)
         | exn ->
-          log "[read] error: %s, continuing" (Printexc.to_string exn);
+          Log.err (fun m -> m "[read] error: %s, continuing" (Printexc.to_string exn));
           Lwt.return (Error `Continue))
   in
   process () >>= function
-  | Error `Continue -> read t page
+  | Error `Continue -> read t buf
   | Error `Canceled -> Lwt.return (Error `Canceled)
   | Error `Disconnected -> Lwt.return (Error `Disconnected)
   | Ok buf -> Lwt.return (Ok buf)
@@ -122,9 +118,10 @@ let safe_apply f x =
   Lwt.catch
     (fun () -> f x)
     (fun exn ->
-       log "[listen] error while handling %s, continuing. bt: %s"
-         (Printexc.to_string exn) (Printexc.get_backtrace ());
+       Log.err (fun m -> m "[listen] error while handling %s, continuing. bt: %s"
+                   (Printexc.to_string exn) (Printexc.get_backtrace ()));
        Lwt.return_unit)
+
 
 (* Loop and listen for packets permanently *)
 (* this function has to be tail recursive, since it is called at the
@@ -133,9 +130,9 @@ let safe_apply f x =
 let rec listen t fn =
   match t.active with
   | true ->
-    let page = Io_page.get 1 in
+    let buf = Cstruct.create (t.mtu + 14) in
     let process () =
-      read t page >|= function
+      read t buf >|= function
       | Ok buf              -> Lwt.async (fun () -> safe_apply fn buf) ; Ok ()
       | Error `Canceled     -> Error `Disconnected
       | Error `Disconnected -> t.active <- false ; Error `Disconnected
@@ -146,26 +143,29 @@ let rec listen t fn =
   | false -> Lwt.return (Ok ())
 
 (* Transmit a packet from a Cstruct.t *)
-let write t buffer =
-  let open Cstruct in
-  (* Unfortunately we peek inside the cstruct type here: *)
+let write t ?size fillf =
   (* This is the interface to the cruel Lwt world with exceptions, we've to guard *)
-  Lwt.catch (fun () ->
-      Lwt_bytes.write t.dev buffer.buffer buffer.off buffer.len >|= fun len' ->
-      t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
-      t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int buffer.len);
-      if len' <> buffer.len then Error (`Partial (t.id, len', buffer))
-      else Ok ())
-    (fun exn -> Lwt.return (Error (`Exn exn)))
-
-
-let writev t = function
-  | []     -> Lwt.return (Ok ())
-  | [page] -> write t page
-  | pages  ->
-    write t @@ Cstruct.concat pages
+  let size = match size with None -> t.mtu | Some s -> s in
+  if size > t.mtu then
+    Lwt.return (Error `Exceeds_mtu)
+  else
+    let size = 14 + size in
+    let buf = Cstruct.create size in
+    let len = 14 + fillf buf in
+    if len > size then
+      Lwt.return (Error `Invalid_length)
+    else
+      Lwt.catch (fun () ->
+          Lwt_bytes.write t.dev buf.Cstruct.buffer 0 len >|= fun len' ->
+          t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
+          t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int len);
+          if len' <> len then Error (`Partial (t.id, len', buf))
+          else Ok ())
+        (fun exn -> Lwt.return (Error (`Exn exn)))
 
 let mac t = t.mac
+
+let mtu t = t.mtu
 
 let get_stats_counters t = t.stats
 
