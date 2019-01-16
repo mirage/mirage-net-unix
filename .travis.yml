@@ -7,7 +7,7 @@ script: bash -ex ./.travis-docker.sh
 env:
   global:
   - PACKAGE="mirage-net-unix"
-  - EXTRA_REMOTES="https://github.com/mirage/mirage-dev.git#mirage-net.2.0.0"
+  - EXTRA_REMOTES="https://github.com/mirage/mirage-dev.git#mirage-net-2.0.0"
   matrix:
   - DISTRO="alpine" OCAML_VERSION="4.04.2"
   - DISTRO="alpine" OCAML_VERSION="4.05.0"
