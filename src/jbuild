@@ -1,6 +1,6 @@
 (library
  ((name mirage_net_unix)
   (public_name mirage-net-unix)
-  (libraries (logs cstruct cstruct-lwt lwt.unix mirage-net-lwt tuntap))
+  (libraries (logs cstruct cstruct-lwt lwt.unix mirage-net-lwt tuntap macaddr))
   (wrapped false)
 ))
