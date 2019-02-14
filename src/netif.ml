@@ -24,8 +24,6 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 type +'a io = 'a Lwt.t
 
-let ethernet_header_size = 14
-
 type t = {
   id: string;
   dev: Lwt_unix.file_descr;
@@ -129,10 +127,10 @@ let safe_apply f x =
 (* this function has to be tail recursive, since it is called at the
    top level, otherwise memory of received packets and all reachable
    data is never claimed.  take care when modifying, here be dragons! *)
-let rec listen t fn =
+let rec listen t ~header_size fn =
   match t.active with
   | true ->
-    let buf = Cstruct.create (t.mtu + ethernet_header_size) in
+    let buf = Cstruct.create (t.mtu + header_size) in
     let process () =
       read t buf >|= function
       | Ok buf              -> Lwt.async (fun () -> safe_apply fn buf) ; Ok ()
@@ -140,30 +138,25 @@ let rec listen t fn =
       | Error `Disconnected -> t.active <- false ; Error `Disconnected
     in
     process () >>= (function
-        | Ok () -> (listen[@tailcall]) t fn
+        | Ok () -> (listen[@tailcall]) t ~header_size fn
         | Error e -> Lwt.return (Error e))
   | false -> Lwt.return (Ok ())
 
 (* Transmit a packet from a Cstruct.t *)
-let write t ?size fillf =
+let write t ~size fillf =
   (* This is the interface to the cruel Lwt world with exceptions, we've to guard *)
-  let size = match size with None -> t.mtu | Some s -> s in
-  if size > t.mtu then
-    Lwt.return (Error `Exceeds_mtu)
+  let buf = Cstruct.create size in
+  let len = fillf buf in
+  if len > size then
+    Lwt.return (Error `Invalid_length)
   else
-    let size = ethernet_header_size + size in
-    let buf = Cstruct.create size in
-    let len = ethernet_header_size + fillf buf in
-    if len > size then
-      Lwt.return (Error `Invalid_length)
-    else
-      Lwt.catch (fun () ->
-          Lwt_bytes.write t.dev buf.Cstruct.buffer 0 len >|= fun len' ->
-          t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
-          t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int len);
-          if len' <> len then Error (`Partial (t.id, len', buf))
-          else Ok ())
-        (fun exn -> Lwt.return (Error (`Exn exn)))
+    Lwt.catch (fun () ->
+        Lwt_bytes.write t.dev buf.Cstruct.buffer 0 len >|= fun len' ->
+        t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
+        t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int len);
+        if len' <> len then Error (`Partial (t.id, len', buf))
+        else Ok ())
+      (fun exn -> Lwt.return (Error (`Exn exn)))
 
 let mac t = t.mac
 
