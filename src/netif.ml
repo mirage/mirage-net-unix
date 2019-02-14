@@ -24,6 +24,8 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 type +'a io = 'a Lwt.t
 
+let ethernet_header_size = 14
+
 type t = {
   id: string;
   dev: Lwt_unix.file_descr;
@@ -130,7 +132,7 @@ let safe_apply f x =
 let rec listen t fn =
   match t.active with
   | true ->
-    let buf = Cstruct.create (t.mtu + 14) in
+    let buf = Cstruct.create (t.mtu + ethernet_header_size) in
     let process () =
       read t buf >|= function
       | Ok buf              -> Lwt.async (fun () -> safe_apply fn buf) ; Ok ()
@@ -149,9 +151,9 @@ let write t ?size fillf =
   if size > t.mtu then
     Lwt.return (Error `Exceeds_mtu)
   else
-    let size = 14 + size in
+    let size = ethernet_header_size + size in
     let buf = Cstruct.create size in
-    let len = 14 + fillf buf in
+    let len = ethernet_header_size + fillf buf in
     if len > size then
       Lwt.return (Error `Invalid_length)
     else
