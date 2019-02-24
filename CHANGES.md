@@ -1,3 +1,7 @@
+### v2.6.0 (26-Feb-2019)
+
+* Adapt to mirage-net 2.0.0 changs (@hannesm)
+
 ### v2.5.0 (06-Feb-2019)
 
 * Build with dune instead of jbuilder (@avsm)
