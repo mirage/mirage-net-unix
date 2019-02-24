@@ -34,9 +34,9 @@ let test_close () =
 
 let test_write () =
   Netif.connect "tap2" >>= fun t ->
-  let data = Cstruct.create 4096 in
-  Netif.writev t [ data ] >>= fun _t ->
-  Netif.writev t [ data ; (Cstruct.create 14) ] >>= fun _t ->
+  let mtu = Netif.mtu t in
+  Netif.write t ~size:mtu (fun _data -> mtu) >>= fun _t ->
+  Netif.write t ~size:(mtu + 14) (fun _data -> mtu + 14) >>= fun _t ->
   Lwt.return_unit
 
 let suite = [
