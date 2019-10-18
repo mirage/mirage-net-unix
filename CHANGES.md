@@ -1,3 +1,7 @@
+### v2.7.0 (25-Oct-2019)
+
+* Adapt to mirage-net 3.0.0 changes (@hannesm)
+
 ### v2.6.0 (26-Feb-2019)
 
 * Adapt to mirage-net 2.0.0 changs (@hannesm)

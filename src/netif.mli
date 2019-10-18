@@ -17,7 +17,7 @@
 
 (** Implementation of the network interface for Unix backends. *)
 
-include Mirage_net_lwt.S
+include Mirage_net.S
 
 val connect : string -> t Lwt.t
 (** [connect tap] connects to the given tap interface. *)

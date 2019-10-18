@@ -16,13 +16,8 @@
  *)
 open Lwt.Infix
 
-[@@@warning "-52"]
-open Mirage_net
-
 let src = Logs.Src.create "netif" ~doc:"Mirage unix network module"
 module Log = (val Logs.src_log src : Logs.LOG)
-
-type +'a io = 'a Lwt.t
 
 type t = {
   id: string;
@@ -71,7 +66,7 @@ let connect devname =
     Log.info (fun m -> m "connect %s with mac %a" devname Macaddr.pp mac);
     Lwt.return t
   with
-  | Failure "tun[open]: Permission denied" ->
+  | Failure "tun[open]: Permission denied" [@warning "-52"] ->
     Lwt.fail_with (err_permission_denied devname)
   | exn -> Lwt.fail exn
 
@@ -81,9 +76,6 @@ let disconnect t =
   Lwt_unix.close t.dev >>= fun () ->
   Tuntap.closetap t.id;
   Lwt.return_unit
-
-type macaddr = Macaddr.t
-type buffer = Cstruct.t
 
 (* Input a frame, and block if nothing is available *)
 let rec read t buf =
