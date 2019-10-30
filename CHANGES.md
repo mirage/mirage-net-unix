@@ -1,4 +1,4 @@
-### v2.7.0 (25-Oct-2019)
+### v2.7.0 (30-Oct-2019)
 
 * Adapt to mirage-net 3.0.0 changes (@hannesm)
 
