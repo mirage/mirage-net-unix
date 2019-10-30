@@ -16,13 +16,8 @@
  *)
 open Lwt.Infix
 
-[@@@warning "-52"]
-open Mirage_net
-
 let src = Logs.Src.create "netif" ~doc:"Mirage unix network module"
 module Log = (val Logs.src_log src : Logs.LOG)
-
-type +'a io = 'a Lwt.t
 
 type t = {
   id: string;
@@ -64,14 +59,12 @@ let connect devname =
     Log.debug (fun m -> m "plugging into %s with mac %a and mtu %d"
                   devname Macaddr.pp mac mtu);
     let active = true in
-    let t = {
-      id=devname; dev; active; mac; mtu;
-      stats= { rx_bytes=0L;rx_pkts=0l; tx_bytes=0L; tx_pkts=0l } }
-    in
+    let stats = Mirage_net.Stats.create () in
+    let t = { id=devname; dev; active; mac; mtu; stats } in
     Log.info (fun m -> m "connect %s with mac %a" devname Macaddr.pp mac);
     Lwt.return t
   with
-  | Failure "tun[open]: Permission denied" ->
+  | Failure "tun[open]: Permission denied" [@warning "-52"] ->
     Lwt.fail_with (err_permission_denied devname)
   | exn -> Lwt.fail exn
 
@@ -82,9 +75,6 @@ let disconnect t =
   Tuntap.closetap t.id;
   Lwt.return_unit
 
-type macaddr = Macaddr.t
-type buffer = Cstruct.t
-
 (* Input a frame, and block if nothing is available *)
 let rec read t buf =
   let process () =
@@ -93,8 +83,7 @@ let rec read t buf =
         | (-1) -> Error `Continue      (* EAGAIN or EWOULDBLOCK *)
         | 0    -> Error `Disconnected  (* EOF *)
         | len ->
-          t.stats.rx_pkts <- Int32.succ t.stats.rx_pkts;
-          t.stats.rx_bytes <- Int64.add t.stats.rx_bytes (Int64.of_int len);
+          Mirage_net.Stats.rx t.stats (Int64.of_int len);
           let buf = Cstruct.sub buf 0 len in
           Ok buf)
       (function
@@ -152,8 +141,7 @@ let write t ~size fillf =
   else
     Lwt.catch (fun () ->
         Lwt_bytes.write t.dev buf.Cstruct.buffer 0 len >|= fun len' ->
-        t.stats.tx_pkts <- Int32.succ t.stats.tx_pkts;
-        t.stats.tx_bytes <- Int64.add t.stats.tx_bytes (Int64.of_int len);
+        Mirage_net.Stats.tx t.stats (Int64.of_int len);
         if len' <> len then Error (`Partial (t.id, len', buf))
         else Ok ())
       (fun exn -> Lwt.return (Error (`Exn exn)))
@@ -164,8 +152,4 @@ let mtu t = t.mtu
 
 let get_stats_counters t = t.stats
 
-let reset_stats_counters t =
-  t.stats.rx_bytes <- 0L;
-  t.stats.rx_pkts  <- 0l;
-  t.stats.tx_bytes <- 0L;
-  t.stats.tx_pkts  <- 0l
+let reset_stats_counters t = Mirage_net.Stats.reset t.stats
