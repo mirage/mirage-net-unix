@@ -106,11 +106,12 @@ let rec read t buf =
 let safe_apply f x =
   Lwt.catch
     (fun () -> f x)
-    (fun exn ->
-       Log.err (fun m -> m "[listen] error while handling %s, continuing. bt: %s"
-                   (Printexc.to_string exn) (Printexc.get_backtrace ()));
-       Lwt.return_unit)
-
+    (function
+      | Out_of_memory -> Lwt.fail Out_of_memory
+      | exn ->
+        Log.err (fun m -> m "[listen] error while handling %s, continuing. bt: %s"
+                    (Printexc.to_string exn) (Printexc.get_backtrace ()));
+        Lwt.return_unit)
 
 (* Loop and listen for packets permanently *)
 (* this function has to be tail recursive, since it is called at the
