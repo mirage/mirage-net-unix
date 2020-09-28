@@ -1,3 +1,7 @@
+### v2.8.0 (2020-09-28)
+
+* Netif.listen: do not catch out of memory exception (#49 @hannesm)
+
 ### v2.7.0 (30-Oct-2019)
 
 * Adapt to mirage-net 3.0.0 changes (@hannesm)
