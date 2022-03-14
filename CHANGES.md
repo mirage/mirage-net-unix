@@ -1,3 +1,7 @@
+### v2.7.1 (14-Mar-2022)
+
+* Do not `Lwt.catch` on the listen callback (@hannesm, #49)
+
 ### v2.7.0 (30-Oct-2019)
 
 * Adapt to mirage-net 3.0.0 changes (@hannesm)
