@@ -1,6 +1,6 @@
 (executables
  (names test)
- (libraries alcotest mirage-net-unix))
+ (libraries alcotest mirage-net-unix logs.fmt))
 
 (alias
  (name runtest)

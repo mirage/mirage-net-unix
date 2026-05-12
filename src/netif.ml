@@ -90,6 +90,9 @@ let rec read t buf =
         | Unix.Unix_error(Unix.ENXIO, _, _) ->
           Log.err (fun m -> m "[read] device %s is down, stopping" t.id);
           Lwt.return (Error `Disconnected)
+        | Unix.Unix_error(Unix.EBADF, _, _) when Lwt_unix.state t.dev = Lwt_unix.Closed ->
+          Log.err (fun m -> m "[read] device %s is not active anymore" t.id);
+          Lwt.return (Error `Canceled)
         | Lwt.Canceled ->
           Log.err (fun m -> m "[read] user program requested cancellation of listen on %s" t.id);
           Lwt.return (Error `Canceled)

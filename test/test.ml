@@ -39,11 +39,38 @@ let test_write () =
   Netif.write t ~size:(mtu + 14) (fun _data -> mtu + 14) >>= fun _t ->
   Lwt.return_unit
 
+let with_alarm ?(timeout=2) f =
+  (* ensure we don't get stuck in an infinite loop,
+     kill the process with SIGALRM after 2 seconds
+   *)
+  let _: int = Unix.alarm timeout in
+  let t = f ()
+  in
+  Lwt.on_termination t (fun () ->let _:int = Unix.alarm 0 in ());
+  t
+
+
+let test_close_listen () =
+  let open Lwt.Syntax in
+  with_alarm @@ fun () ->
+  Netif.connect "tap3" >>= fun t ->
+  printf "connected\n%!";
+  let listener = Netif.listen t ~header_size:14 (fun _ -> Lwt.return_unit) in
+  Netif.disconnect t >>= fun () ->
+  printf "disconnected\n%!";
+  let+ listener in match listener with
+    | Ok () | Error `Disconnected -> ()
+    | Error e ->
+        Alcotest.failf "Netif.listen failed: %a" Netif.pp_error e
+
 let suite = [
   "connect", `Quick, (fun () -> run test_open) ;
   "disconnect", `Quick, (fun () -> run test_close);
+  "listen+disconnect", `Quick, (fun () -> run test_close_listen);
   "write", `Quick, (fun () -> run test_write);
 ]
 
 let _ =
+  Logs.set_level (Some Logs.Info);
+  Logs.set_reporter (Logs_fmt.reporter ());
   Alcotest.run "mirage-net-unix" [ "tests", suite ]
